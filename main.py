@@ -43,13 +43,12 @@ db = init_connection_pool()
 @require_api_key  # Add this decorator to protect the endpoint
 def get_objects():
     try:
-        start_date = request.args.get('start_date')
-        end_date = request.args.get('end_date')
+        date = request.args.get('date')
         
         query = 'SELECT * FROM daily_meals'
         params = []
         
-        if start_date
+        if date:
             query += ' WHERE date = %s'
             params = [date]
 
