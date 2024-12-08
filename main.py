@@ -29,7 +29,6 @@ def access_secret_version(secret_id):
         logger.error(f"Error accessing secret {secret_id}: {e}")
         return None
 
-# Initialize database connection
 def init_db_connection():
     try:
         db_user = os.environ.get('DB_USER')
@@ -74,3 +73,70 @@ try:
     else:
         logger.info("API_KEY successfully loaded")
 except Exception as e:
+    logger.error(f"Initialization error: {e}")
+    db = None
+    API_KEY = None
+
+def require_api_key(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        provided_key = request.headers.get('X-API-Key')
+        if not provided_key:
+            provided_key = request.args.get('api_key')
+        
+        logger.info(f"API request received with key: {provided_key[:4]}...")
+        logger.info(f"Stored API key starts with: {API_KEY[:4] if API_KEY else 'None'}...")
+        
+        if not provided_key or provided_key != API_KEY:
+            logger.error("API key validation failed")
+            return jsonify({'error': 'Invalid or missing API key'}), 401
+        return f(*args, **kwargs)
+    return decorated
+
+@app.route('/api/objects', methods=['GET'])
+@require_api_key
+def get_objects():
+    if not db:
+        logger.error("Database connection not available")
+        return jsonify({'error': 'Database connection not available'}), 503
+    
+    try:
+        date = request.args.get('date')
+        logger.info(f"Fetching data for date: {date}")
+        
+        query = 'SELECT * FROM daily_meals'
+        params = {}
+        
+        if date:
+            query += ' WHERE date = :date'
+            params = {'date': date}
+
+        with db.connect() as conn:
+            result = conn.execute(sqlalchemy.text(query), params)
+            results = [dict(row._mapping) for row in result]
+            logger.info(f"Retrieved {len(results)} records")
+            return jsonify(results)
+    except Exception as e:
+        logger.error(f"Query execution error: {e}")
+        return jsonify({'error': 'Internal server error'}), 500
+
+@app.route('/health', methods=['GET'])
+def health_check():
+    status = {
+        'database': bool(db),
+        'api_key': bool(API_KEY),
+        'environment': {
+            'DB_USER': bool(os.environ.get('DB_USER')),
+            'DB_NAME': bool(os.environ.get('DB_NAME')),
+            'DB_CONNECTION_NAME': bool(os.environ.get('DB_CONNECTION_NAME')),
+            'API_KEY': bool(os.environ.get('API_KEY'))
+        }
+    }
+    
+    if all(status['environment'].values()) and db and API_KEY:
+        return jsonify({'status': 'healthy', 'details': status}), 200
+    return jsonify({'status': 'unhealthy', 'details': status}), 503
+
+if __name__ == "__main__":
+    port = int(os.environ.get('PORT', 8080))
+    app.run(host='0.0.0.0', port=port)
