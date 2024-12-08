@@ -68,10 +68,15 @@ def require_api_key(f):
     @wraps(f)
     def decorated(*args, **kwargs):
         provided_key = request.headers.get('X-API-Key')
+        logger.info(f"Received API key: {provided_key}")
+        logger.info(f"Expected API key: {API_KEY}")
+        
         if not provided_key:
             provided_key = request.args.get('api_key')
+            logger.info(f"API key from query params: {provided_key}")
         
         if not provided_key or provided_key != API_KEY:
+            logger.error("API key validation failed")
             return jsonify({'error': 'Invalid or missing API key'}), 401
         return f(*args, **kwargs)
     return decorated
