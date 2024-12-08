@@ -1,5 +1,5 @@
 Flask==2.2.2
 Werkzeug==2.2.2
 SQLAlchemy==1.4.23
-PyMySQL==1.0.2
+pg8000==1.29.4
 google-cloud-secret-manager==2.12.0
