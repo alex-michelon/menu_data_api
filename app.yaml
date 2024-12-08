@@ -1,10 +1,10 @@
 runtime: python39
 
 env_variables:
-  DB_USER: "your-db-user"
-  DB_PASS: "your-db-password"
-  DB_NAME: "your-database-name"
-  CLOUD_SQL_CONNECTION_NAME: "your-project:region:instance-name"
+  DB_USER: "postgres"
+  DB_PASS: "root"
+  DB_NAME: "menu_table"
+  CLOUD_SQL_CONNECTION_NAME: "cumulonimbus-439521:us-central1:cumulonimbus-cloud-sql	"
 
 instance_class: F1
 
