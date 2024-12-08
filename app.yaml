@@ -1,0 +1,14 @@
+runtime: python39
+
+env_variables:
+  DB_USER: "your-db-user"
+  DB_PASS: "your-db-password"
+  DB_NAME: "your-database-name"
+  CLOUD_SQL_CONNECTION_NAME: "your-project:region:instance-name"
+
+instance_class: F1
+
+automatic_scaling:
+  target_cpu_utilization: 0.65
+  min_instances: 1
+  max_instances: 10
