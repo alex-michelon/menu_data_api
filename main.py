@@ -2,12 +2,29 @@ from flask import Flask, jsonify, request
 from functools import wraps
 import os
 import sqlalchemy
-import pymysql
+import logging
 from google.cloud import secretmanager
+
+logging.basicConfig(level=logging.INFO)
 
 app = Flask(__name__)
 
-API_KEY = os.environ.get('API_KEY')
+def access_secret_version(secret_id):
+    client = secretmanager.SecretManagerServiceClient()
+    name = f"projects/{os.environ.get('PROJECT_ID')}/secrets/{secret_id}/versions/latest"
+    response = client.access_secret_version(request={"name": name})
+    return response.payload.data.decode("UTF-8")
+
+# Get secrets from Secret Manager
+try:
+    API_KEY = access_secret_version('api-key')
+    DB_USER = access_secret_version('db-user')
+    DB_PASSWORD = access_secret_version('db-password')
+    DB_NAME = access_secret_version('db-name')
+    DB_CONNECTION_NAME = access_secret_version('db-connection-name')
+except Exception as e:
+    logging.error(f"Error accessing secrets: {str(e)}")
+    raise e
 
 def require_api_key(f):
     @wraps(f)
@@ -21,23 +38,27 @@ def require_api_key(f):
         return f(*args, **kwargs)
     return decorated
 
-def init_connection_pool():
-    db_config = {
-        'pool_size': 5,
-        'pool_timeout': 30,
-        'pool_recycle': 1800,
-    }
-    return sqlalchemy.create_engine(
-        'mysql+pymysql://{user}:{password}@/{database}?unix_socket=/cloudsql/{connection_name}'.format(
-            user=os.environ.get('DB_USER'),
-            password=os.environ.get('DB_PASS'),
-            database=os.environ.get('DB_NAME'),
-            connection_name=os.environ.get('CLOUD_SQL_CONNECTION_NAME')
-        ),
-        **db_config
-    )
+def init_db_connection():
+    try:
+        pool = sqlalchemy.create_engine(
+            sqlalchemy.engine.url.URL.create(
+                drivername="postgresql+pg8000",
+                username=DB_USER,
+                password=DB_PASSWORD,
+                database=DB_NAME,
+                query={"unix_sock": f"/cloudsql/{DB_CONNECTION_NAME}/.s.PGSQL.5432"},
+            ),
+            pool_size=5,
+            max_overflow=2,
+            pool_timeout=30,
+            pool_recycle=1800,
+        )
+        return pool
+    except Exception as e:
+        logging.error(f"Error initializing database connection: {str(e)}")
+        raise e
 
-db = init_connection_pool()
+db = init_db_connection()
 
 @app.route('/api/objects', methods=['GET'])
 @require_api_key
@@ -46,16 +67,18 @@ def get_objects():
         date = request.args.get('date')
         
         query = 'SELECT * FROM daily_meals'
-        params = []
+        params = {}
         
         if date:
-            query += ' WHERE date = %s'
-            params = [date]
+            query += ' WHERE date = :date'
+            params = {'date': date}
 
         with db.connect() as conn:
-            results = conn.execute(query, params).fetchall()
-            return jsonify([dict(row) for row in results])
+            result = conn.execute(sqlalchemy.text(query), params)
+            results = [dict(row._mapping) for row in result]
+            return jsonify(results)
     except Exception as e:
+        logging.error(f"Database error: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
 @app.route('/health', methods=['GET'])
