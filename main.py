@@ -40,7 +40,7 @@ def init_connection_pool():
 db = init_connection_pool()
 
 @app.route('/api/objects', methods=['GET'])
-@require_api_key  # Add this decorator to protect the endpoint
+@require_api_key
 def get_objects():
     try:
         date = request.args.get('date')
