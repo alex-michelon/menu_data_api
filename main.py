@@ -15,7 +15,6 @@ def access_secret_version(secret_id):
     response = client.access_secret_version(request={"name": name})
     return response.payload.data.decode("UTF-8")
 
-# Get secrets from Secret Manager
 try:
     API_KEY = access_secret_version('api-key')
     DB_USER = access_secret_version('db-user')
