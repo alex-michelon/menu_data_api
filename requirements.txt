@@ -3,3 +3,4 @@ Werkzeug==2.2.2
 SQLAlchemy==1.4.23
 pg8000==1.29.4
 google-cloud-secret-manager==2.12.0
+Flask-CORS==3.0.10
