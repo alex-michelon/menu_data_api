@@ -111,14 +111,30 @@ def get_objects():
     
     try:
         date = request.args.get('date')
-        logger.info(f"Fetching data for date: {date}")
+        meal_time = request.args.get('meal_time')
+        line_type = request.args.get('line_type')
         
         query = 'SELECT * FROM daily_meals'
         params = {}
+
+        if date or meal_time or line_type:
+            query += ' WHERE '
         
         if date:
-            query += ' WHERE date = :date'
-            params = {'date': date}
+            query += 'date = :date'
+            params['date'] = date
+        
+        if meal_time:
+            if date:
+                query += ' AND '
+            query += 'meal_time = :meal_time'
+            params['meal_time'] = meal_time
+
+        if line_type:
+            if date or meal_time:
+                query += ' AND '
+            query += 'line_type = :line_type'
+            params['line_type'] = line_type
 
         with db.connect() as conn:
             result = conn.execute(sqlalchemy.text(query), params)
