@@ -113,6 +113,7 @@ def get_objects():
         date = request.args.get('date')
         meal_time = request.args.get('meal_time')
         line_type = request.args.get('line_type')
+        dining_hall = request.args.get('dining_hall')
         
         query = 'SELECT * FROM daily_meals'
         params = {}
@@ -135,6 +136,12 @@ def get_objects():
                 query += ' AND '
             query += 'line_type = :line_type'
             params['line_type'] = line_type
+
+        if dining_hall:
+            if date or meal_time or line_type:
+                query += ' AND '
+            query += 'dining_hall = :dining_hall'
+            params['dining_hall'] = dining_hall
 
         with db.connect() as conn:
             result = conn.execute(sqlalchemy.text(query), params)
