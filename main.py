@@ -118,7 +118,7 @@ def get_objects():
         query = 'SELECT * FROM daily_meals'
         params = {}
 
-        if date or meal_time or line_type:
+        if date or meal_time or line_type or dining_hall:
             query += ' WHERE '
         
         if date:
